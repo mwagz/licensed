@@ -19,7 +19,12 @@ module Licensed
       def dependencies
         @dependencies ||= packages.map do |name, package|
           path = package["path"]
-          fail "couldn't locate #{name} under node_modules/" unless path
+
+          if path.empty?
+            next if @config.ignored?("type" => NPM.type, "name" => name)
+            fail "couldn't locate #{name} under node_modules/"
+          end
+
           Dependency.new(path, {
             "type"     => NPM.type,
             "name"     => package["name"],
@@ -34,7 +39,6 @@ module Licensed
       def packages
         root_dependencies = JSON.parse(package_metadata_command)["dependencies"]
         recursive_dependencies(root_dependencies).each_with_object({}) do |(name, results), hsh|
-          next if @config.ignored?("type" => NPM.type, "name" => name)
           results.uniq! { |package| package["version"] }
           if results.size == 1
             hsh[name] = results[0]
